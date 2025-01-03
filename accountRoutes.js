@@ -1,17 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/usersModel');
 const Account = require('../models/Account');
-const Transaction = require('../models/Transaction');
 
-// Create a new user
+// Create a new account
 router.post('/', async (req, res) => {
     try {
-        const user = new User(req.body);
-        await user.save();
+        const account = new Account(req.body);
+        await account.save();
         res.status(201).json({
             success: true,
-            data: user
+            data: account
         });
     } catch (error) {
         res.status(400).json({
@@ -21,13 +19,13 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Get all users
+// Get all accounts
 router.get('/', async (req, res) => {
     try {
-        const users = await User.find();
+        const accounts = await Account.find().populate('userId', 'name email');
         res.json({
             success: true,
-            data: users
+            data: accounts
         });
     } catch (error) {
         res.status(500).json({
@@ -37,19 +35,37 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get user by ID
+// Get accounts by user ID
+router.get('/user/:userId', async (req, res) => {
+    try {
+        const accounts = await Account.find({ userId: req.params.userId })
+            .populate('userId', 'name email');
+        res.json({
+            success: true,
+            data: accounts
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// Get account by ID
 router.get('/:id', async (req, res) => {
     try {
-        const user = await User.findById(req.params.id);
-        if (!user) {
+        const account = await Account.findById(req.params.id)
+            .populate('userId', 'name email');
+        if (!account) {
             return res.status(404).json({
                 success: false,
-                message: 'User not found'
+                message: 'Account not found'
             });
         }
         res.json({
             success: true,
-            data: user
+            data: account
         });
     } catch (error) {
         res.status(500).json({
@@ -59,65 +75,24 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Get user complete profile with accounts and transactions
-router.get('/:id/profile', async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
-        }
-
-        // Get user's accounts
-        const accounts = await Account.find({ userId: user._id });
-
-        // Get user's transactions
-        const transactions = await Transaction.find({ userId: user._id })
-            .populate('accountId', 'accountTitle');
-
-        // Calculate totals
-        const totals = {
-            totalCredit: accounts.reduce((sum, account) => sum + account.credit, 0),
-            totalDebit: accounts.reduce((sum, account) => sum + account.debit, 0),
-            balance: accounts.reduce((sum, account) => sum + (account.credit - account.debit), 0)
-        };
-
-        res.json({
-            success: true,
-            data: {
-                user,
-                accounts,
-                transactions,
-                totals
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
-    }
-});
-
-// Update user
+// Update account
 router.put('/:id', async (req, res) => {
     try {
-        const user = await User.findByIdAndUpdate(
+        const account = await Account.findByIdAndUpdate(
             req.params.id,
             req.body,
             { new: true }
-        );
-        if (!user) {
+        ).populate('userId', 'name email');
+        
+        if (!account) {
             return res.status(404).json({
                 success: false,
-                message: 'User not found'
+                message: 'Account not found'
             });
         }
         res.json({
             success: true,
-            data: user
+            data: account
         });
     } catch (error) {
         res.status(400).json({
@@ -127,19 +102,19 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Delete user
+// Delete account
 router.delete('/:id', async (req, res) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.id);
-        if (!user) {
+        const account = await Account.findByIdAndDelete(req.params.id);
+        if (!account) {
             return res.status(404).json({
                 success: false,
-                message: 'User not found'
+                message: 'Account not found'
             });
         }
         res.json({
             success: true,
-            message: 'User deleted successfully'
+            message: 'Account deleted successfully'
         });
     } catch (error) {
         res.status(500).json({
